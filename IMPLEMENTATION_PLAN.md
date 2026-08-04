@@ -72,4 +72,3 @@
 - Whether GPIO0/BOOT remains the most practical interaction input while USB serial/JTAG is enabled.
 - Whether the selected upstream wake-word model fits the final 8 MB image with sufficient OTA margin; use a supported default or button interaction if not.
 - Whether a complete activation can be verified without the user's account-side confirmation.
-

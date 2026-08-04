@@ -1,0 +1,12 @@
+Host: macOS
+ESP-IDF: v6.0.2
+Python: 3.14.6
+Git: 2.50.1 (Apple Git-155)
+CMake: 4.4.2
+Ninja: 1.12.1
+Xtensa compiler: xtensa-esp-elf-gcc 15.2.0 (esp-15.2.0_20251204)
+esptool: 5.3.1
+Target: esp32s3
+Board name: hero-xiao-esp32s3-sense
+Language: en-US
+Interaction: BOOT button (wake word disabled for first hardware release)
