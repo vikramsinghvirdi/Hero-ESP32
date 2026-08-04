@@ -25,6 +25,14 @@ choice
         depends on USE_EMOTE_MESSAGE_STYLE
 endchoice
 
+config HERO_DIAGNOSTIC_MODE
+    bool "Hero hardware diagnostic mode"
+    default n
+    depends on BOARD_TYPE_HERO_XIAO_ESP32S3_SENSE
+    help
+        Run isolated display, PDM microphone, speaker, flash, and PSRAM diagnostics instead of
+        starting networking. Intended for initial hardware bring-up only.
+
 config CUSTOM_ASSETS_FILE
     depends on FLASH_CUSTOM_ASSETS
     string "Custom Assets File"
@@ -174,6 +182,9 @@ choice BOARD_TYPE
         depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_BREAD_COMPACT_WIFI_CAM
         bool "Bread Compact Wi-Fi + LCD + Camera (面包板)"
+        depends on IDF_TARGET_ESP32S3
+    config BOARD_TYPE_HERO_XIAO_ESP32S3_SENSE
+        bool "Hero XIAO ESP32-S3 Sense"
         depends on IDF_TARGET_ESP32S3
     config BOARD_TYPE_DF_S3_AI_CAM
         bool "DFRobot ESP32-S3 AI Camera Module"

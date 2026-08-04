@@ -1,0 +1,24 @@
+{
+    "type": "hero-xiao-esp32s3-sense",
+    "target": "esp32s3",
+    "builds": [
+        {
+            "name": "hero-xiao-esp32s3-sense-diagnostic",
+            "sdkconfig_append": [
+                "CONFIG_HERO_DIAGNOSTIC_MODE=y",
+                "CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y",
+                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/8m.csv\"",
+                "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y"
+            ]
+        },
+        {
+            "name": "hero-xiao-esp32s3-sense",
+            "sdkconfig_append": [
+                "CONFIG_HERO_DIAGNOSTIC_MODE=n",
+                "CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y",
+                "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/8m.csv\"",
+                "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y"
+            ]
+        }
+    ]
+}
