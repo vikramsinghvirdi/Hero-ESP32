@@ -3,4 +3,4 @@ Pinned upstream commit: 66bf9f7c1dece87cb23ab2b9d23d05e7744a9c9b
 Upstream version: 2.4.1
 Upstream commit date: 2026-08-04T09:24:25+08:00
 Hero board identity: hero-xiao-esp32s3-sense
-Hero release source commit: ada899d31ffe115c4626bfb27008671b8fc7e5af
+Hero release source commit: 1901e8b020c4daf8355cce131ff0077a2de516b9
