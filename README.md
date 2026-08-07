@@ -101,11 +101,27 @@ No. Connect the OLED and amplifier directly with jumper wires or soldered connec
 breadboard is optional when you want strain relief, a tidier prototype, or an easy way to split
 `GND`, `3V3`, or `5V`. Do not join `3V3` and `5V` rails.
 
-## Fastest installation: flash the included release
+## Choose an installation path
 
-The `release/` directory contains firmware for an 8 MB XIAO ESP32-S3 Sense. A full erase is best
-for a new device because it removes settings left by unrelated firmware. A full erase also deletes
-saved Wi-Fi and activation data.
+| Path | Intended user | What they need |
+|---|---|---|
+| **A. Flash the ready-to-use binary** | Someone assembling an identical Hero who does not want to edit code | One prebuilt `.bin`, Python, and esptool; ESP-IDF is not required |
+| **B. Build from source** | A developer changing pins, animations, audio, wake behavior, or other firmware | This repository's source and ESP-IDF 6.0.2 |
+
+Both paths install the same normal conversational Hero firmware. The diagnostic image under
+`release/diagnostic/` is only for hardware testing.
+
+## Path A: flash the ready-to-use binary
+
+Download
+[`hero-xiao-esp32s3-sense-full.bin`](https://github.com/vikramsinghvirdi/Hero-ESP32/raw/refs/heads/main/release/hero-xiao-esp32s3-sense-full.bin).
+It is a complete 8 MB flash image containing the bootloader, partition table, OTA metadata, Hero
+application, and offline wake-word assets at their correct addresses. Flash this file at address
+`0x0`. Do not flash the smaller application-only `hero-xiao-esp32s3-sense.bin` at `0x0`.
+
+This binary is for the exact XIAO ESP32-S3 Sense, SH1107 OLED, and MAX98357A wiring documented
+above. A full erase is recommended for a new device because it removes settings left by unrelated
+firmware. It also deletes previously saved Wi-Fi and activation data.
 
 ### macOS or Linux
 
@@ -125,39 +141,44 @@ saved Wi-Fi and activation data.
    ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
    ```
 
-3. Verify the package and flash it:
+3. If you cloned or downloaded the repository, verify the binary:
 
    ```sh
    cd release
    shasum -a 256 -c SHA256SUMS.txt
-   ./erase-and-flash.sh /dev/cu.usbmodem101
    ```
 
-   Replace the example port with the port from step 2. If exactly one compatible serial port is
-   connected on macOS, the script can detect it when no port is supplied.
-
-4. To update firmware later without deleting saved Wi-Fi/account settings:
+4. Erase the board and write the single full image at `0x0`:
 
    ```sh
-   ./flash-command.sh /dev/cu.usbmodem101
+   python3 -m esptool --chip esp32s3 -p /dev/cu.usbmodem101 erase-flash
+   python3 -m esptool --chip esp32s3 -p /dev/cu.usbmodem101 -b 460800 \
+     --before default-reset --after hard-reset write-flash 0x0 \
+     hero-xiao-esp32s3-sense-full.bin
    ```
+
+   Replace the example port with the detected port. On Linux it will normally resemble
+   `/dev/ttyACM0` instead.
 
 On Linux, if opening the port fails with a permissions error, add your user to the distribution's
 serial group (commonly `dialout`) or apply its documented udev rule, then log out and back in.
 
-### Windows or a manual esptool flash
+### Windows
 
-From the repository's `release` directory, replace `COM5` with the Device Manager port:
+Download the full `.bin` above, open PowerShell in its download directory, and replace `COM5` with
+the port shown in Device Manager:
 
 ```powershell
 py -m pip install esptool
 py -m esptool --chip esp32s3 -p COM5 erase-flash
-py -m esptool --chip esp32s3 -p COM5 -b 460800 --before default-reset --after hard-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 8MB 0x0 bootloader.bin 0x8000 partition-table.bin 0xd000 ota_data_initial.bin 0x20000 hero-xiao-esp32s3-sense.bin 0x580000 generated_assets.bin
+py -m esptool --chip esp32s3 -p COM5 -b 460800 --before default-reset --after hard-reset write-flash 0x0 hero-xiao-esp32s3-sense-full.bin
 ```
 
-These commands do not enable secure boot, flash encryption, or burn eFuses.
+These commands do not enable secure boot, flash encryption, or burn eFuses. The individual binary
+files and their exact offsets remain in `release/` for developers who prefer a component flash;
+`erase-and-flash.sh` and `flash-command.sh` automate that method on macOS.
 
-## Build from source
+## Path B: build and modify the source
 
 ### 1. Install ESP-IDF 6.0.2
 

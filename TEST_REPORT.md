@@ -1,6 +1,6 @@
 # Hero XIAO ESP32-S3 Sense Test Report
 
-Test window: 2026-08-03 through 2026-08-04 (America/Los_Angeles)
+Test window: 2026-08-03 through 2026-08-07 (America/Los_Angeles)
 
 ## Results
 
@@ -16,6 +16,7 @@ Test window: 2026-08-03 through 2026-08-04 (America/Los_Angeles)
 | OLED | PASS (physical) | SH1107 detected at `0x3C`; centered animated Hero eyes observed |
 | Diagnostic build | PASS | diagnostic firmware built and ran on physical hardware |
 | Normal release build | PASS | `0x27dc60` bytes; `0x323a0` bytes / 7% free in each app slot |
+| Complete flash image | PASS | 8,388,608-byte merged image; valid ESP32-S3 header/hash and byte-identical partition, OTA, application, and assets regions |
 | Wi-Fi provisioning | PASS | connected to the selected 2.4 GHz network and obtained DHCP address |
 | Xiaozhi activation | PASS | MQTT connection completed and runtime logged `Activation done` |
 | English wake model | PASS | `mn5q8_en` loaded and MultiNet initialized with `Hey Hero` command |

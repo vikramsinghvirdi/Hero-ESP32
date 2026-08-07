@@ -24,7 +24,24 @@ Use 3.3 V for the OLED and 5 V for the MAX98357A amplifier. All grounds must be 
 Do not connect either speaker lead to ground. The Sense expansion board microphone is internal:
 PDM DATA is GPIO41 and PDM CLK is GPIO42, so it needs no jumper wire.
 
-## Verify and flash
+## Simplest method: one complete binary
+
+`hero-xiao-esp32s3-sense-full.bin` is a complete 8 MB image. It already contains every required
+region at the correct address. Flash it at `0x0`:
+
+```zsh
+python3 -m pip install --user esptool
+python3 -m esptool --chip esp32s3 -p /dev/cu.usbmodem101 erase-flash
+python3 -m esptool --chip esp32s3 -p /dev/cu.usbmodem101 -b 460800 \
+  --before default-reset --after hard-reset write-flash 0x0 \
+  hero-xiao-esp32s3-sense-full.bin
+```
+
+Replace `/dev/cu.usbmodem101` with the connected port. The full erase deletes old Wi-Fi and
+activation data. Do not substitute the smaller application-only
+`hero-xiao-esp32s3-sense.bin` at address `0x0`.
+
+## Alternative method: individual binaries
 
 Install esptool in a Python environment (`python3 -m pip install --user esptool`), connect exactly
 one XIAO with a data-capable USB cable, then verify the package:
@@ -38,7 +55,7 @@ shasum -a 256 -c SHA256SUMS.txt
 To flash without erasing saved Wi-Fi/activation settings, run `./flash-command.sh`. Either script
 accepts an explicit port such as `/dev/cu.usbmodem101` as its first argument.
 
-The scripts use ESP-IDF's generated layout exactly:
+The scripts write the same content as the full image using ESP-IDF's generated layout:
 
 | Offset | Artifact |
 |---:|---|
