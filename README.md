@@ -1,5 +1,9 @@
 # Hero ESP32 Voice Assistant
 
+<p align="center">
+  <img src="docs/images/hero-device.png" alt="Hero ESP32 voice assistant with animated OLED face" width="520">
+</p>
+
 Hero is a source-controlled voice-assistant firmware for the **Seeed Studio XIAO ESP32-S3
 Sense**, a **128x128 SH1107 OLED**, and a **MAX98357A I2S speaker amplifier**. It is based on the
 official open-source [Xiaozhi ESP32](https://github.com/78/xiaozhi-esp32) project, pinned to
