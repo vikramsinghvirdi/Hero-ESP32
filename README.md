@@ -1,173 +1,397 @@
-# An MCP-based Chatbot
+# Hero ESP32 Voice Assistant
 
-(English | [中文](README_zh.md) | [日本語](README_ja.md))
+Hero is a source-controlled voice-assistant firmware for the **Seeed Studio XIAO ESP32-S3
+Sense**, a **128x128 SH1107 OLED**, and a **MAX98357A I2S speaker amplifier**. It is based on the
+official open-source [Xiaozhi ESP32](https://github.com/78/xiaozhi-esp32) project, pinned to
+upstream version 2.4.1 and extended with a dedicated Hero board definition.
 
-## Introduction
+This repository contains the complete buildable source and a ready-to-flash package. It does not
+use the opaque MakerWorld firmware.
 
-👉 [Human: Give AI a camera vs AI: Instantly finds out the owner hasn't washed hair for three days【bilibili】](https://www.bilibili.com/video/BV1bpjgzKEhd/)
+## What Hero includes
 
-👉 [Handcraft your AI girlfriend, beginner's guide【bilibili】](https://www.bilibili.com/video/BV1XnmFYLEJN/)
+- Offline **“Hey Hero”** wake-word recognition on the ESP32-S3 using Espressif ESP-SR MultiNet5.
+- A 128x128 monochrome face with eyes and a small animated mouth—no status text over the face.
+- Calm randomized idle gestures: looking around, blinking, winking, curious movement, and sleepy
+  movement.
+- A distinct focused-eye gesture and pulsing mouth while listening.
+- Faster asymmetric eye and mouth motion while speaking.
+- XIAO Sense-board PDM microphone input.
+- MAX98357A digital I2S speaker output with a recommended initial volume of 75%.
+- Wi-Fi provisioning, Xiaozhi account activation, cloud conversation, and BOOT-button fallback.
+- An 8 MB dual-OTA partition layout enlarged to hold the English wake-word assets.
+- Diagnostic firmware and reproducible normal-release firmware.
 
-As a voice interaction entry, the XiaoZhi AI chatbot leverages the AI capabilities of large models like Qwen / DeepSeek, and achieves multi-terminal control via the MCP protocol.
+## How it works
 
-<img src="docs/mcp-based-graph.jpg" alt="Control everything via MCP" width="320">
+The large language model does **not** run on the ESP32. Hero uses a split architecture:
 
-## Recent Updates
+1. The ESP32 continuously runs the small offline “Hey Hero” detector.
+2. After the wake word, the ESP32 opens an encrypted network session and streams microphone audio.
+3. The configured Xiaozhi service performs speech recognition, language-model inference, and
+   text-to-speech.
+4. Compressed response audio returns to the ESP32 and plays through the MAX98357A.
+5. Listening, thinking, speaking, idle, offline, and error animations run locally on the ESP32.
 
-- The mainline now targets ESP-IDF v6.0 or later, with v6.0.2 as the preferred stable SDK. The previous 157-variant baseline was validated on ESP-IDF v6.0.1; the current matrix contains 171 variants, of which 170 support IDF 6.0.x and the ESP32-S31 variant requires IDF 6.1 or later.
-- MQTT and BluFi cryptographic code has migrated to PSA Crypto. IDF 6 component splits and third-party dependency compatibility have also been addressed.
-- Audio pipeline concurrency, MQTT/UDP packet validation, and release-matrix selection have been hardened.
-- ESP-IDF v5.5 is retained only for documented legacy boards. ESP32-P4 Rev1 and Rev3 are both supported on IDF 6 with ESP-SR 2.4.7; see the [ESP-IDF 6.0 Migration Guide](docs/esp-idf-6-migration.md) for full compatibility and board-validation details.
+The wake word and BOOT button work locally. Conversational answers require working Wi-Fi and a
+configured service account.
 
-### Features Implemented
+## Required hardware
 
-- Wi-Fi, wired Ethernet, USB RNDIS, and ML307/EC801E or NT26 Cat.1 4G networking; supported boards can switch between Wi-Fi and 4G
-- Offline voice wake-up with [ESP-SR](https://github.com/espressif/esp-sr), including customizable wake words
-- Two communication transports: [WebSocket](docs/websocket.md) and [MQTT + UDP](docs/mqtt-udp.md)
-- Opus audio streaming with conventional streaming ASR + LLM + TTS pipelines and Realtime end-to-end voice models; AEC-capable hardware supports realtime full-duplex interaction
-- Speaker recognition, identifies the current speaker [3D Speaker](https://github.com/modelscope/3D-Speaker)
-- OLED / LCD displays with emoji and rich expression support, plus camera vision input on supported boards
-- Battery display and power management
-- 38 interface languages, with localized voice prompts where available and English fallback
-- ESP32, ESP32-C3, ESP32-C5, ESP32-C6, ESP32-S3, and ESP32-P4 chip platforms
-- Wi-Fi provisioning through hotspot or BluFi
-- Device-side MCP for device control (Speaker, LED, Servo, GPIO, etc.)
-- Cloud-side MCP to extend large model capabilities (smart home control, PC desktop operation, knowledge search, email, etc.)
-- Customizable wake words, fonts, emojis, and chat backgrounds with online web-based editing ([Custom Assets Generator](https://github.com/78/xiaozhi-assets-generator))
+| Item | Notes |
+|---|---|
+| Seeed Studio XIAO ESP32-S3 Sense | 8 MB flash and 8 MB PSRAM; use the Sense expansion board for its PDM microphone |
+| SH1107 OLED | 128x128, four-wire I2C, normally address `0x3C` or `0x3D` |
+| MAX98357A amplifier | I2S mono class-D breakout |
+| Speaker | Connect only to the amplifier's `SPK+` and `SPK-` terminals |
+| Jumper wires | Female-to-female wires for modules with fitted headers, or soldered wires |
+| USB data cable | Must carry data, not power only |
+| Optional mini breadboard | Not required; useful only for mechanically holding modules or distributing power/ground |
 
-## Hardware
+## Exact wiring
 
-### Breadboard DIY Practice
+Disconnect USB power while making connections. All module grounds must be common.
 
-See the Feishu document tutorial:
+### OLED to XIAO
 
-👉 ["XiaoZhi AI Chatbot Encyclopedia"](https://ccnphfhqs21z.feishu.cn/wiki/F5krwD16viZoF0kKkvDcrZNYnhb?from=from_copylink)
+| OLED pin | XIAO pin label | ESP32-S3 GPIO | Supply |
+|---|---|---:|---|
+| `SDA` | `D4` | GPIO5 | — |
+| `SCL`/`SCK` | `D5` | GPIO6 | — |
+| `VCC` | `3V3` | — | **3.3 V only** |
+| `GND` | `GND` | — | Ground |
 
-Breadboard demo:
+### MAX98357A to XIAO
 
-![Breadboard Demo](docs/v1/wiring2.jpg)
+| MAX98357A pin | XIAO pin label | ESP32-S3 GPIO | Function |
+|---|---|---:|---|
+| `BCLK`/`BCK` | `D1` | GPIO2 | I2S bit clock |
+| `DIN` | `D3` | GPIO4 | I2S audio data |
+| `LRC`/`LRCLK`/`WS` | `D8` | GPIO7 | I2S word select |
+| `VIN` | `5V`/`VBUS` | — | 5 V from USB |
+| `GND` | `GND` | — | Ground |
 
-### Supports 138 Board Directories and 171 Release Variants (Partial List)
+Leave `GAIN`, `SD`, and `MODE` at the breakout's defaults unless its manufacturer requires `SD`
+to be pulled high for enable.
 
-- <a href="https://oshwhub.com/li-chuang-kai-fa-ban/li-chuang-shi-zhan-pai-esp32-s3-kai-fa-ban" target="_blank" title="LiChuang ESP32-S3 Development Board">LiChuang ESP32-S3 Development Board</a>
-- <a href="https://github.com/espressif/esp-box" target="_blank" title="Espressif ESP32-S3-BOX-3">Espressif ESP32-S3-BOX-3</a>
-- <a href="https://docs.m5stack.com/zh_CN/core/CoreS3" target="_blank" title="M5Stack CoreS3">M5Stack CoreS3</a>
-- <a href="https://docs.m5stack.com/en/atom/Atomic%20Echo%20Base" target="_blank" title="AtomS3R + Echo Base">M5Stack AtomS3R + Echo Base</a>
-- <a href="https://gf.bilibili.com/item/detail/1108782064" target="_blank" title="Magic Button 2.4">Magic Button 2.4</a>
-- <a href="https://www.waveshare.net/shop/ESP32-S3-Touch-AMOLED-1.8.htm" target="_blank" title="Waveshare ESP32-S3-Touch-AMOLED-1.8">Waveshare ESP32-S3-Touch-AMOLED-1.8</a>
-- <a href="https://github.com/Xinyuan-LilyGO/T-Circle-S3" target="_blank" title="LILYGO T-Circle-S3">LILYGO T-Circle-S3</a>
-- <a href="https://oshwhub.com/tenclass01/xmini_c3" target="_blank" title="XiaGe Mini C3">XiaGe Mini C3</a>
-- <a href="https://oshwhub.com/movecall/cuican-ai-pendant-lights-up-y" target="_blank" title="Movecall CuiCan ESP32S3">CuiCan AI Pendant</a>
-- <a href="https://github.com/WMnologo/xingzhi-ai" target="_blank" title="WMnologo-Xingzhi-1.54">WMnologo-Xingzhi-1.54TFT</a>
-- <a href="https://www.seeedstudio.com/SenseCAP-Watcher-W1-A-p-5979.html" target="_blank" title="SenseCAP Watcher">SenseCAP Watcher</a>
-- <a href="https://www.bilibili.com/video/BV1BHJtz6E2S/" target="_blank" title="ESP-HI Low Cost Robot Dog">ESP-HI Low Cost Robot Dog</a>
+### Speaker to amplifier
 
-<div style="display: flex; justify-content: space-between;">
-  <a href="docs/v1/lichuang-s3.jpg" target="_blank" title="LiChuang ESP32-S3 Development Board">
-    <img src="docs/v1/lichuang-s3.jpg" width="240" />
-  </a>
-  <a href="docs/v1/espbox3.jpg" target="_blank" title="Espressif ESP32-S3-BOX3">
-    <img src="docs/v1/espbox3.jpg" width="240" />
-  </a>
-  <a href="docs/v1/m5cores3.jpg" target="_blank" title="M5Stack CoreS3">
-    <img src="docs/v1/m5cores3.jpg" width="240" />
-  </a>
-  <a href="docs/v1/atoms3r.jpg" target="_blank" title="AtomS3R + Echo Base">
-    <img src="docs/v1/atoms3r.jpg" width="240" />
-  </a>
-  <a href="docs/v1/magiclick.jpg" target="_blank" title="Magic Button 2.4">
-    <img src="docs/v1/magiclick.jpg" width="240" />
-  </a>
-  <a href="docs/v1/waveshare.jpg" target="_blank" title="Waveshare ESP32-S3-Touch-AMOLED-1.8">
-    <img src="docs/v1/waveshare.jpg" width="240" />
-  </a>
-  <a href="docs/v1/lilygo-t-circle-s3.jpg" target="_blank" title="LILYGO T-Circle-S3">
-    <img src="docs/v1/lilygo-t-circle-s3.jpg" width="240" />
-  </a>
-  <a href="docs/v1/xmini-c3.jpg" target="_blank" title="XiaGe Mini C3">
-    <img src="docs/v1/xmini-c3.jpg" width="240" />
-  </a>
-  <a href="docs/v1/movecall-cuican-esp32s3.jpg" target="_blank" title="CuiCan">
-    <img src="docs/v1/movecall-cuican-esp32s3.jpg" width="240" />
-  </a>
-  <a href="docs/v1/wmnologo_xingzhi_1.54.jpg" target="_blank" title="WMnologo-Xingzhi-1.54">
-    <img src="docs/v1/wmnologo_xingzhi_1.54.jpg" width="240" />
-  </a>
-  <a href="docs/v1/sensecap_watcher.jpg" target="_blank" title="SenseCAP Watcher">
-    <img src="docs/v1/sensecap_watcher.jpg" width="240" />
-  </a>
-  <a href="docs/v1/esp-hi.jpg" target="_blank" title="ESP-HI Low Cost Robot Dog">
-    <img src="docs/v1/esp-hi.jpg" width="240" />
-  </a>
-</div>
+| Speaker lead | Connect to |
+|---|---|
+| Lead 1 | MAX98357A `SPK+` |
+| Lead 2 | MAX98357A `SPK-` |
 
-## Software
+Never connect either speaker lead to ground. The amplifier uses a bridge-tied output.
 
-### Firmware Flashing
+### Microphone
 
-For beginners, it is recommended to use the firmware that can be flashed without setting up a development environment.
+The microphone is already on the XIAO ESP32-S3 Sense expansion board:
 
-The firmware connects to the official [xiaozhi.me](https://xiaozhi.me) server by default. Personal users can register an account to use the Qwen real-time model for free.
+| Microphone signal | ESP32-S3 GPIO | External wire required? |
+|---|---:|---|
+| PDM DATA | GPIO41 | No |
+| PDM CLK | GPIO42 | No |
 
-👉 [Beginner's Firmware Flashing Guide](https://ccnphfhqs21z.feishu.cn/wiki/Zpz4wXBtdimBrLk25WdcXzxcnNS)
+The Sense expansion board must be installed and oriented correctly. No separate microphone jumper
+wires are needed.
 
-### Development Environment
+### Is a breadboard required?
 
-- Cursor or VSCode
-- Install the ESP-IDF plugin. [ESP-IDF v6.0.2](https://github.com/espressif/esp-idf/releases/tag/v6.0.2) is preferred; use a stable v6.0 or later release. ESP-IDF v5.5.2 is retained only for legacy board compatibility
-- Linux is better than Windows for faster compilation and fewer driver issues
-- This project uses Google C++ code style, please ensure compliance when submitting code
+No. Connect the OLED and amplifier directly with jumper wires or soldered connections. A mini
+breadboard is optional when you want strain relief, a tidier prototype, or an easy way to split
+`GND`, `3V3`, or `5V`. Do not join `3V3` and `5V` rails.
 
-### Developer Documentation
+## Fastest installation: flash the included release
 
-- [ESP-IDF 6.0 Migration Guide](docs/esp-idf-6-migration.md) - SDK compatibility, component changes, legacy hardware support, and board validation status
-- [Custom Board Guide](docs/custom-board.md) - Learn how to create custom boards for XiaoZhi AI
-- [MCP Protocol IoT Control Usage](docs/mcp-usage.md) - Learn how to control IoT devices via MCP protocol
-- [MCP Protocol Interaction Flow](docs/mcp-protocol.md) - Device-side MCP protocol implementation
-- [MQTT + UDP Hybrid Communication Protocol Document](docs/mqtt-udp.md)
-- [A detailed WebSocket communication protocol document](docs/websocket.md)
+The `release/` directory contains firmware for an 8 MB XIAO ESP32-S3 Sense. A full erase is best
+for a new device because it removes settings left by unrelated firmware. A full erase also deletes
+saved Wi-Fi and activation data.
 
-## Large Model Configuration
+### macOS or Linux
 
-If you already have a XiaoZhi AI chatbot device and have connected to the official server, you can log in to the [xiaozhi.me](https://xiaozhi.me) console for configuration.
+1. Install Python 3 and esptool:
 
-👉 [Backend Operation Video Tutorial (Old Interface)](https://www.bilibili.com/video/BV1jUCUY2EKM/)
+   ```sh
+   python3 -m pip install --user esptool
+   ```
 
-## Related Open Source Projects
+2. Connect Hero with a known data-capable cable and find the serial port:
 
-For server deployment on personal computers, refer to the following open-source projects:
+   ```sh
+   # macOS
+   ls /dev/cu.usbmodem* /dev/cu.usbserial* 2>/dev/null
 
-- [xinnan-tech/xiaozhi-esp32-server](https://github.com/xinnan-tech/xiaozhi-esp32-server) Python server
-- [joey-zhou/xiaozhi-esp32-server-java](https://github.com/joey-zhou/xiaozhi-esp32-server-java) Java server
-- [AnimeAIChat/xiaozhi-server-go](https://github.com/AnimeAIChat/xiaozhi-server-go) Golang server
-- [hackers365/xiaozhi-esp32-server-golang](https://github.com/hackers365/xiaozhi-esp32-server-golang) Golang server
+   # Linux
+   ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
+   ```
 
-Other client projects using the XiaoZhi communication protocol:
+3. Verify the package and flash it:
 
-- [huangjunsen0406/py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) Python client
-- [TOM88812/xiaozhi-android-client](https://github.com/TOM88812/xiaozhi-android-client) Android client
-- [100askTeam/xiaozhi-linux](http://github.com/100askTeam/xiaozhi-linux) Linux client by 100ask
-- [78/xiaozhi-sf32](https://github.com/78/xiaozhi-sf32) Bluetooth chip firmware by Sichuan
-- [QuecPython/solution-xiaozhiAI](https://github.com/QuecPython/solution-xiaozhiAI) QuecPython firmware by Quectel
+   ```sh
+   cd release
+   shasum -a 256 -c SHA256SUMS.txt
+   ./erase-and-flash.sh /dev/cu.usbmodem101
+   ```
 
-Custom Assets Tools:
+   Replace the example port with the port from step 2. If exactly one compatible serial port is
+   connected on macOS, the script can detect it when no port is supplied.
 
-- [78/xiaozhi-assets-generator](https://github.com/78/xiaozhi-assets-generator) Custom Assets Generator (Wake words, fonts, emojis, backgrounds)
+4. To update firmware later without deleting saved Wi-Fi/account settings:
 
-## About the Project
+   ```sh
+   ./flash-command.sh /dev/cu.usbmodem101
+   ```
 
-This is an open-source ESP32 project, released under the MIT license, allowing anyone to use it for free, including for commercial purposes.
+On Linux, if opening the port fails with a permissions error, add your user to the distribution's
+serial group (commonly `dialout`) or apply its documented udev rule, then log out and back in.
 
-We hope this project helps everyone understand AI hardware development and apply rapidly evolving large language models to real hardware devices.
+### Windows or a manual esptool flash
 
-If you have any ideas or suggestions, please feel free to raise Issues or join our [Discord](https://discord.gg/C759fGMBcZ) or QQ group: 1095994019
+From the repository's `release` directory, replace `COM5` with the Device Manager port:
 
-## Star History
+```powershell
+py -m pip install esptool
+py -m esptool --chip esp32s3 -p COM5 erase-flash
+py -m esptool --chip esp32s3 -p COM5 -b 460800 --before default-reset --after hard-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 8MB 0x0 bootloader.bin 0x8000 partition-table.bin 0xd000 ota_data_initial.bin 0x20000 hero-xiao-esp32s3-sense.bin 0x580000 generated_assets.bin
+```
 
-<a href="https://star-history.com/#78/xiaozhi-esp32&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date" />
- </picture>
-</a>
+These commands do not enable secure boot, flash encryption, or burn eFuses.
+
+## Build from source
+
+### 1. Install ESP-IDF 6.0.2
+
+Use Espressif's normal installation for your operating system. This project is validated with
+ESP-IDF v6.0.2. After installation, activate the environment:
+
+```sh
+source /path/to/esp-idf/export.sh
+idf.py --version
+```
+
+The reported version should be `v6.0.2`. The included `tools/hero-idf-env.sh` can activate an
+already-installed IDF when `IDF_PATH` points to it.
+
+### 2. Clone Hero
+
+```sh
+git clone https://github.com/vikramsinghvirdi/Hero-ESP32.git
+cd Hero-ESP32
+```
+
+ESP-IDF downloads the declared managed components during the first configure/build. Internet
+access is therefore required for a clean first build.
+
+### 3. Build the normal firmware
+
+```sh
+python3 scripts/build.py hero-xiao-esp32s3-sense \
+  --name hero-xiao-esp32s3-sense \
+  --language en-US
+```
+
+Expected board identity: `hero-xiao-esp32s3-sense`. The normal firmware uses:
+
+- ESP32-S3 target
+- 8 MB flash
+- `partitions/hero-8m-wakeword.csv`
+- English MultiNet5 quantized recognition model
+- phoneme command `hd hgRb`, displayed as “Hey Hero”
+- detection threshold `15`
+
+### 4. Flash a source build
+
+```sh
+idf.py -p /dev/cu.usbmodem101 erase-flash
+idf.py -p /dev/cu.usbmodem101 flash
+idf.py -p /dev/cu.usbmodem101 monitor
+```
+
+Use `Ctrl+]` to exit ESP-IDF Monitor. Omit `erase-flash` for an ordinary firmware update when you
+want to retain NVS settings.
+
+### 5. Build diagnostic firmware
+
+The diagnostic variant probes flash, PSRAM, OLED, microphone activity, and writes a short 440 Hz
+speaker test tone:
+
+```sh
+python3 scripts/build.py hero-xiao-esp32s3-sense \
+  --name hero-xiao-esp32s3-sense-diagnostic \
+  --language en-US
+```
+
+The diagnostic image is a hardware test, not the conversational release. Rebuild the normal
+variant before returning a device to regular use.
+
+## First boot, Wi-Fi, and activation
+
+Each newly erased ESP32 has its own Wi-Fi credentials and device activation. These values are not
+compiled into this repository.
+
+1. Power Hero after flashing. With no saved network, it enters Wi-Fi configuration mode.
+2. On a phone or computer, join the open setup network named `Xiaozhi-XXXX`. The suffix is derived
+   from that ESP32's MAC address, so every unit has a different name.
+3. If the setup page does not open automatically, browse to `http://192.168.4.1`.
+4. Select a **2.4 GHz** Wi-Fi network and enter that network's password.
+5. Hero restarts or connects to the selected network.
+6. Sign in to [xiaozhi.me](https://xiaozhi.me/), open the device/agent control console, add the new
+   device, and enter the activation code presented for that unit.
+7. Choose the agent, language model, system prompt, and TTS voice in the same web console.
+
+The temporary `Xiaozhi-XXXX` setup network normally has no password. The password requested inside
+the setup page is the password for the 2.4 GHz Wi-Fi network Hero will use.
+
+To deliberately re-enter Wi-Fi setup, restart Hero and click BOOT while it is in the starting
+state. A normal BOOT click after startup toggles the conversation as a wake-word fallback.
+
+## Using Hero
+
+1. Wait until the boot animation settles into the idle face.
+2. From about 20–50 cm away, clearly say **“Hey Hero.”**
+3. Pause briefly for the focused listening eyes, then ask the question.
+4. The face becomes more energetic while response audio is playing.
+
+The offline detector only recognizes the wake phrase; it does not answer the question locally.
+If Wi-Fi or the backend is unavailable, the face can still animate but a cloud response will not
+arrive.
+
+## Voice and volume
+
+Hero applies 75% speaker volume once per device using a versioned NVS marker. Later user changes
+are preserved across restarts. If audio breaks up, check the 5 V amplifier supply and speaker
+wiring before raising volume; 100% can clip or brown out a weak USB supply.
+
+Male/female voice selection is a server-side TTS setting:
+
+1. Sign in to the Xiaozhi web console.
+2. Open Hero's agent/device configuration.
+3. Select the desired TTS provider and male voice.
+4. Save, then start a new conversation.
+
+Changing firmware does not by itself change the server's voice.
+
+## Expected serial evidence
+
+Successful boot and wake-word initialization include lines similar to:
+
+```text
+MODEL_LOADER: Successfully load srmodels
+AfeAudioEngine: Model 0: mn5q8_en
+CustomWakeWord: Command: hd hgRb, Text: Hey Hero, Action: wake
+AfeAudioEngine: Initialized FD AFE, detector: MultiNet
+```
+
+A successful wake and conversation include:
+
+```text
+CustomWakeWord: Custom wake word detected
+Application: Wake word detected: Hey Hero
+StateMachine: State: idle -> connecting
+StateMachine: State: connecting -> listening
+StateMachine: State: listening -> speaking
+```
+
+## Troubleshooting
+
+### Hero has power but no serial port appears
+
+- Use a USB cable known to carry data.
+- Connect directly to the Mac/PC instead of a charge-only dock port.
+- Try another USB port and rescan `/dev/cu.usbmodem*`, `/dev/ttyACM*`, or Device Manager.
+- A lit OLED proves power, not USB data connectivity.
+
+### “Hey Hero” is not recognized
+
+- Wait until the device is fully booted and idle.
+- Speak the two words clearly, 20–50 cm from the Sense microphone.
+- Keep the microphone opening unobstructed and pause before the question.
+- Confirm the serial log loaded `mn5q8_en` and shows the `Hey Hero` command.
+- Press BOOT once to test the cloud conversation path separately from wake-word recognition.
+
+### Wake is detected but there is no answer
+
+- Check for Wi-Fi and MQTT connection lines in the serial log.
+- Confirm the device is activated in the correct Xiaozhi account.
+- Verify the selected web-console agent is enabled.
+- If the eyes change to listening/speaking but no sound is heard, troubleshoot the amplifier and
+  speaker path rather than the microphone.
+
+### Audio is quiet, distorted, or broken
+
+- Confirm MAX98357A `VIN` is on `5V`, not `3V3`.
+- Confirm `BCLK=D1/GPIO2`, `DIN=D3/GPIO4`, and `LRC=D8/GPIO7`.
+- Confirm both speaker wires go only to `SPK+` and `SPK-`.
+- Use a stable USB power source and short ground/power wires.
+- Start around 75%; avoid 100% if it clips or resets the board.
+
+### OLED is blank or shifted
+
+- Confirm OLED power is 3.3 V.
+- Confirm `SDA=D4/GPIO5` and `SCL=D5/GPIO6`.
+- The firmware probes both `0x3C` and `0x3D`.
+- This Hero driver uses SH1107 COM offset `0x00` for a full-height 128x128 module. A different
+  controller or glass mapping may require a separate board definition.
+
+### Setup hotspot is missing
+
+- The hotspot exists only in provisioning mode.
+- Restart and click BOOT during startup to request provisioning.
+- Look for `Xiaozhi-XXXX`; the suffix differs on every ESP32.
+- Use a phone that can remain connected to a Wi-Fi network without internet access.
+
+## Reusing the firmware on another device
+
+For an identical XIAO/OLED/MAX98357A assembly, use the same normal release image:
+
+1. Reproduce the exact wiring above.
+2. Full-erase and flash the second ESP32.
+3. Provision its Wi-Fi separately.
+4. Add/activate its unique device identity in the web console.
+5. Assign it to the desired agent and voice.
+
+Do not copy an NVS dump from the first unit. Wi-Fi credentials, device identity, and activation
+state should remain unique to each board.
+
+For different GPIOs, display controllers, microphones, or amplifiers, create a new board directory
+and identity instead of silently changing Hero's pin map. See `docs/custom-board.md` for the
+upstream board architecture.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `main/boards/hero-xiao-esp32s3-sense/` | Hero hardware, audio, display, and animation implementation |
+| `partitions/hero-8m-wakeword.csv` | 8 MB dual-OTA layout with enlarged model assets |
+| `sdkconfig.hero.defaults` | Reproducible Hero configuration defaults |
+| `release/` | Prebuilt firmware, flash scripts, configuration snapshots, notices, and hashes |
+| `TEST_REPORT.md` | Build, electrical, hardware, network, wake-word, and conversation validation |
+| `SECURITY_REVIEW.md` | Source and release security notes |
+| `IMPLEMENTATION_PLAN.md` | Implementation record and design decisions |
+
+## Upstream and updates
+
+This repository keeps the official project as its upstream foundation. To configure an upstream
+remote in a fresh clone:
+
+```sh
+git remote add upstream https://github.com/78/xiaozhi-esp32.git
+git fetch upstream
+```
+
+Upstream updates can touch core audio, display, Kconfig, component, and partition behavior. Merge
+them on a branch and rebuild/physically validate Hero before flashing deployed devices.
+
+## Security notes
+
+- No personal Wi-Fi password, device activation code, MAC address, or device UUID is stored in the
+  tracked source or packaged flash regions.
+- NVS is intentionally omitted from the release image.
+- Secure boot, flash encryption, and eFuse operations are not enabled by the supplied scripts.
+- `erase-and-flash.sh` is destructive only to the selected ESP32's flash contents.
+
+## License and attribution
+
+This project retains the upstream MIT license. See `LICENSE` and `release/THIRD_PARTY_NOTICES.md`.
+Xiaozhi ESP32 and managed components remain subject to their respective licenses. “Hero” denotes
+this custom hardware/firmware configuration.

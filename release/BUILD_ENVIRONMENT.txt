@@ -9,4 +9,6 @@ esptool: 5.3.1
 Target: esp32s3
 Board name: hero-xiao-esp32s3-sense
 Language: en-US
-Interaction: BOOT button (wake word disabled for first hardware release)
+Interaction: offline “Hey Hero” wake word plus BOOT-button fallback
+Wake model: ESP-SR MultiNet5 English quantized8 (mn5q8_en)
+Wake threshold: 15

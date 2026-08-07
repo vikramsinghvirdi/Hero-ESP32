@@ -1,4 +1,7 @@
-# Flash Hero firmware on macOS
+# Flash the ready-to-use Hero firmware
+
+This directory is the binary package for people who want to assemble an identical Hero without
+installing ESP-IDF or compiling source. The full source remains in the parent repository.
 
 ## Required wiring before power-up
 
@@ -23,8 +26,8 @@ PDM DATA is GPIO41 and PDM CLK is GPIO42, so it needs no jumper wire.
 
 ## Verify and flash
 
-Install esptool in a Python environment (`python3 -m pip install esptool`), connect exactly one
-XIAO by USB, then verify the package:
+Install esptool in a Python environment (`python3 -m pip install --user esptool`), connect exactly
+one XIAO with a data-capable USB cable, then verify the package:
 
 ```zsh
 cd release
@@ -33,7 +36,7 @@ shasum -a 256 -c SHA256SUMS.txt
 ```
 
 To flash without erasing saved Wi-Fi/activation settings, run `./flash-command.sh`. Either script
-accepts an explicit port such as `/dev/cu.usbmodem1101` as its first argument.
+accepts an explicit port such as `/dev/cu.usbmodem101` as its first argument.
 
 The scripts use ESP-IDF's generated layout exactly:
 
@@ -43,6 +46,10 @@ The scripts use ESP-IDF's generated layout exactly:
 | `0x008000` | `partition-table.bin` |
 | `0x00d000` | `ota_data_initial.bin` |
 | `0x020000` | `hero-xiao-esp32s3-sense.bin` |
-| `0x600000` | `generated_assets.bin` |
+| `0x580000` | `generated_assets.bin` |
+
+The assets image contains the English ESP-SR model required by the offline “Hey Hero” detector.
+NVS is deliberately absent from this package, so it contains no saved Wi-Fi password, activation
+state, MAC address, or device UUID.
 
 Secure boot, flash encryption, and eFuse changes are not part of either script.

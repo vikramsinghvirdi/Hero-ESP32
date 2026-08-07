@@ -1,9 +1,10 @@
-#include "wifi_board.h"
-#include "codecs/no_audio_codec.h"
 #include "application.h"
 #include "button.h"
+#include "codecs/no_audio_codec.h"
 #include "config.h"
 #include "hero_eye_display.h"
+#include "settings.h"
+#include "wifi_board.h"
 
 #include <driver/i2c_master.h>
 #include <esp_chip_info.h>
@@ -17,6 +18,24 @@
 
 #define TAG "HeroBoard"
 
+class HeroAudioCodec : public NoAudioCodecSimplexPdm {
+public:
+    using NoAudioCodecSimplexPdm::NoAudioCodecSimplexPdm;
+
+    void Start() override {
+        NoAudioCodecSimplexPdm::Start();
+
+        // Apply Hero's recommended level once. A versioned key allows this release to correct
+        // the earlier 100% setting without overwriting later user adjustments on every boot.
+        Settings settings("hero", true);
+        if (!settings.GetBool("volume_75_v2", false)) {
+            SetOutputVolume(75);
+            settings.SetBool("volume_75_v2", true);
+            ESP_LOGI(TAG, "Set recommended speaker volume to 75%%");
+        }
+    }
+};
+
 class HeroXiaoEsp32S3Sense : public WifiBoard {
 public:
     HeroXiaoEsp32S3Sense() : boot_button_(BOOT_BUTTON_GPIO) {
@@ -26,10 +45,10 @@ public:
     }
 
     AudioCodec* GetAudioCodec() override {
-        static NoAudioCodecSimplexPdm codec(
-            AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
-            AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK, AUDIO_I2S_SPK_GPIO_DOUT,
-            AUDIO_I2S_MIC_GPIO_CLK, AUDIO_I2S_MIC_GPIO_DIN);
+        static HeroAudioCodec codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
+                                    AUDIO_I2S_SPK_GPIO_BCLK, AUDIO_I2S_SPK_GPIO_LRCK,
+                                    AUDIO_I2S_SPK_GPIO_DOUT, AUDIO_I2S_MIC_GPIO_CLK,
+                                    AUDIO_I2S_MIC_GPIO_DIN);
         return &codec;
     }
 
@@ -88,7 +107,9 @@ private:
             .flags = {.dc_low_on_data = 0, .disable_control_phase = 1},
         };
         ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(display_i2c_bus_, &io_config, &panel_io_));
-        esp_lcd_panel_sh1107_config_t sh1107_config = {.contrast = 128, .offset = 0x60};
+        // Full-height 128x128 SH1107 modules start at COM0. The component's generic 0x60
+        // default targets panels whose glass is mounted at a shifted COM origin.
+        esp_lcd_panel_sh1107_config_t sh1107_config = {.contrast = 128, .offset = 0x00};
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.reset_gpio_num = GPIO_NUM_NC;
         panel_config.bits_per_pixel = 1;
@@ -104,8 +125,10 @@ private:
     void InitializeButton() {
         boot_button_.OnClick([this]() {
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateStarting) EnterWifiConfigMode();
-            else app.ToggleChatState();
+            if (app.GetDeviceState() == kDeviceStateStarting)
+                EnterWifiConfigMode();
+            else
+                app.ToggleChatState();
         });
     }
 

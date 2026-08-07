@@ -1,5 +1,8 @@
 # Hero XIAO ESP32-S3 Sense Implementation Plan
 
+Status: implemented and physically validated. This file records the design path; the current
+installation and reuse instructions are in the repository README.
+
 ## Pinned upstream
 
 - Repository: `https://github.com/78/xiaozhi-esp32`
@@ -63,12 +66,12 @@
 5. Build and flash the normal Xiaozhi firmware, verify provisioning/activation logs, then package genuine build outputs and exact flash scripts.
 6. Produce security review, endpoint/credential searches, clean upstream diff, checksums, wiring/build docs, and a validation report.
 
-## Known uncertainties to resolve by inspection or test
+## Resolved validation items
 
-- Exact SH1107 initialization sequence, RAM addressing offset, and mirror settings for the user's particular 128x128 module.
-- OLED address (`0x3C` or `0x3D`).
-- Physical board flash/PSRAM capacity and PSRAM mode; verify rather than relying on product-family defaults.
-- MAX98357A channel-slot selection and resulting volume for the wired module.
-- Whether GPIO0/BOOT remains the most practical interaction input while USB serial/JTAG is enabled.
-- Whether the selected upstream wake-word model fits the final 8 MB image with sufficient OTA margin; use a supported default or button interaction if not.
-- Whether a complete activation can be verified without the user's account-side confirmation.
+- The 128x128 SH1107 module uses address `0x3C`, no mirroring, and COM offset `0x00`.
+- Physical flash and octal PSRAM both reported 8 MB.
+- MAX98357A output was audible on GPIO2/GPIO4/GPIO7; the normal release starts at 75% volume.
+- GPIO0/BOOT works as a provisioning/conversation fallback with USB Serial/JTAG enabled.
+- The English MultiNet5 model fits the custom 8 MB dual-OTA layout with 7% app-slot margin.
+- Wi-Fi provisioning, account activation, offline “Hey Hero” detection, cloud recognition, and TTS
+  playback were completed on physical hardware.

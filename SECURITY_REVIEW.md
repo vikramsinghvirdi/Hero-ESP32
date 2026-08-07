@@ -1,6 +1,6 @@
 # Hero Firmware Security Review
 
-Review date: 2026-08-03 (America/Los_Angeles)
+Review date: 2026-08-07 (America/Los_Angeles)
 
 ## Scope and provenance
 
@@ -53,8 +53,9 @@ OTA/activation request.
 - No eFuses were changed or requested.
 - Debug serial logging is enabled. It exposes device identifiers and network endpoints. Upstream
   debug paths should be reviewed before deploying in an untrusted physical environment.
-- Dual OTA slots are present. The normal release app occupies about 85% of each 0x2f0000-byte app
-  slot, leaving 0x72e60 bytes.
+- Dual OTA slots are present. The English wake-word release uses 0x2b0000-byte app slots and an
+  enlarged 0x280000-byte assets partition. The current app leaves 0x323a0 bytes (7%) in each app
+  slot.
 
 ## Search record and findings
 

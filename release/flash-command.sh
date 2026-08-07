@@ -19,4 +19,4 @@ python3 -m esptool --chip esp32s3 -p "$port" -b 460800 \
   0x8000 "$release_dir/partition-table.bin" \
   0xd000 "$release_dir/ota_data_initial.bin" \
   0x20000 "$release_dir/hero-xiao-esp32s3-sense.bin" \
-  0x600000 "$release_dir/generated_assets.bin"
+  0x580000 "$release_dir/generated_assets.bin"
